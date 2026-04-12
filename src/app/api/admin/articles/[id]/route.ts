@@ -19,7 +19,7 @@ export async function GET(
   }
   
   const { id } = await params;
-  const article = getArticleById(id);
+  const article = await getArticleById(id);
   
   if (!article) {
     return NextResponse.json({ error: '文章不存在' }, { status: 404 });
@@ -41,12 +41,12 @@ export async function PUT(
   const { id } = await params;
   const body = await req.json();
   
-  const existing = getArticleById(id);
+  const existing = await getArticleById(id);
   if (!existing) {
     return NextResponse.json({ error: '文章不存在' }, { status: 404 });
   }
   
-  updateArticle(id, {
+  await updateArticle(id, {
     title: body.title,
     category: body.category,
     categorySlug: body.categorySlug,
@@ -58,7 +58,7 @@ export async function PUT(
     published: body.published,
   });
   
-  const updated = getArticleById(id);
+  const updated = await getArticleById(id);
   return NextResponse.json({ article: updated });
 }
 
@@ -74,11 +74,11 @@ export async function DELETE(
   
   const { id } = await params;
   
-  const existing = getArticleById(id);
+  const existing = await getArticleById(id);
   if (!existing) {
     return NextResponse.json({ error: '文章不存在' }, { status: 404 });
   }
   
-  deleteArticle(id);
+  await deleteArticle(id);
   return NextResponse.json({ success: true });
 }

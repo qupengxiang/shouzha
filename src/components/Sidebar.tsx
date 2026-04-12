@@ -52,7 +52,7 @@ export default function Sidebar({
       </div>
 
       {/* Sidebar */}
-      <aside className={`w-56 shrink-0 sticky top-[calc(3.5rem+2rem)] max-h-[calc(100vh-7rem)] overflow-y-auto ${mobileOpen ? '' : 'hidden'} lg:block`}>
+      <div className={`w-full ${mobileOpen ? '' : 'hidden'} lg:block`}>
         {/* Category Filter */}
         <div className="py-6 flex flex-col gap-8">
           <div>
@@ -136,7 +136,7 @@ export default function Sidebar({
               : `${filteredCount} / ${totalCount} 篇`}
           </p>
         </div>
-      </aside>
+      </div>
     </>
   );
 }

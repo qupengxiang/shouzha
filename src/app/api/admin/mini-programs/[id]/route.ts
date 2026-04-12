@@ -7,11 +7,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const sessionId = cookieStore.get('session_id')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  const program = getMiniProgramById(id);
+  const program = await getMiniProgramById(id);
   if (!program) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   return NextResponse.json(program);
@@ -22,7 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const sessionId = cookieStore.get('session_id')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
@@ -33,7 +33,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: '标题和链接不能为空' }, { status: 400 });
   }
 
-  updateMiniProgram(id, { title, description: excerpt, coverImage, openLink, published, sortOrder });
+  await updateMiniProgram(id, { title, description: excerpt, coverImage, openLink, published, sortOrder });
   return NextResponse.json({ success: true });
 }
 
@@ -42,10 +42,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const sessionId = cookieStore.get('session_id')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  deleteMiniProgram(id);
+  await deleteMiniProgram(id);
   return NextResponse.json({ success: true });
 }

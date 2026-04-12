@@ -1,7 +1,8 @@
-import { getPublishedArticles } from '@/lib/db';
+import { getPublishedArticles, getAllCategories } from '@/lib/db';
 import ArticleGrid from '@/components/ArticleGrid';
 
-export default function HomePage() {
-  const articles = getPublishedArticles();
-  return <ArticleGrid articles={articles} />;
+export default async function HomePage() {
+  const articles = await getPublishedArticles();
+  const categories = await getAllCategories();
+  return <ArticleGrid articles={articles} categories={categories} />;
 }

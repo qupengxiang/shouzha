@@ -2,25 +2,39 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import PostCard from './PostCard';
-import Sidebar, { Category } from './Sidebar';
+import Sidebar, { Category as SidebarCategory } from './Sidebar';
 
 interface Article {
   id: string; title: string; category: string; categorySlug: string;
   date: string; readTime: string; tags: string[]; excerpt: string; content?: string;
 }
 
-interface Props { articles: Article[]; }
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  createdAt: string;
+  icon?: string;
+  desc?: string;
+  color?: string;
+}
 
-const categories: Category[] = [
-  { slug: 'life', name: '生活', icon: '🏠', desc: '旅行、美食、日常碎片', color: '#E8D5C4' },
-  { slug: 'learn', name: '学习与工作', icon: '📚', desc: '项目笔记、书影音、复盘', color: '#D4E8D4' },
-  { slug: 'think', name: '思考与成长', icon: '💡', desc: '随笔、价值观、年终总结', color: '#E8E4D4' },
-  { slug: 'knowledge', name: '知识积累', icon: '📦', desc: '技能卡片、工具箱、收藏合集', color: '#D4D8E8' },
-];
+interface Props { articles: Article[]; categories: Category[]; }
 
-export default function ArticleGrid({ articles }: Props) {
+export default function ArticleGrid({ articles, categories }: Props) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
+
+  const sidebarCategories: SidebarCategory[] = useMemo(() => {
+    return categories.map(cat => ({
+      slug: cat.slug,
+      name: cat.name,
+      icon: cat.icon || '📄',
+      desc: cat.desc || '',
+      color: cat.color || '#E8D5C4',
+    }));
+  }, [categories]);
 
   const years = useMemo(() => {
     return [...new Set(articles.map(a => (a.date ?? '').slice(0, 4)).filter(Boolean))]
@@ -83,15 +97,22 @@ export default function ArticleGrid({ articles }: Props) {
       <section className="py-16 pb-24" id="posts">
         <div className="max-w-[1200px] mx-auto px-4 lg:px-8">
           <h2 className="font-serif text-2xl font-semibold mb-8 pl-4 border-l-4 border-amber-600">
-            {selectedCategory === 'all' ? '最近更新' : categories.find(c => c.slug === selectedCategory)?.name}
+            {selectedCategory === 'all' ? '最近更新' : sidebarCategories.find(c => c.slug === selectedCategory)?.name}
           </h2>
-          <div className="flex gap-10 items-start lg:flex-row-reverse">
+
+          {/* Mobile Sidebar */}
+          <div className="w-full lg:hidden mb-6">
             <Sidebar
-              categories={categories} years={years}
+              categories={sidebarCategories} years={years}
               totalCount={articles.length} filteredCount={filteredArticles.length}
               selectedCategory={selectedCategory} selectedYear={selectedYear}
               onCategoryChange={setSelectedCategory} onYearChange={setSelectedYear}
             />
+          </div>
+
+          {/* Desktop: flex 布局，侧边栏跟文章一起自然滚动 */}
+          <div className="hidden lg:flex gap-10 items-start">
+            {/* 文章区 */}
             <div className="flex-1 min-w-0 grid gap-6 sm:grid-cols-2 xl:gap-8">
               {filteredArticles.length === 0 ? (
                 <div className="col-span-full text-center py-16 text-gray-400">
@@ -110,6 +131,37 @@ export default function ArticleGrid({ articles }: Props) {
                 ))
               )}
             </div>
+            {/* 侧边栏 - 自然跟随文章滚动 */}
+            <div className="w-56 shrink-0">
+              <Sidebar
+                categories={sidebarCategories} years={years}
+                totalCount={articles.length} filteredCount={filteredArticles.length}
+                selectedCategory={selectedCategory} selectedYear={selectedYear}
+                onCategoryChange={setSelectedCategory} onYearChange={setSelectedYear}
+              />
+            </div>
+          </div>
+
+          {/* Mobile fallback */}
+          <div className="lg:hidden">
+            {filteredArticles.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <span className="text-5xl block mb-4">📭</span>
+                <p className="text-base mb-4">暂无符合条件的文章</p>
+                <button
+                  className="px-5 py-2 border border-border text-gray-500 text-sm rounded-lg hover:border-amber-600 hover:text-amber-600 transition-colors"
+                  onClick={() => { setSelectedCategory('all'); setSelectedYear('all'); }}
+                >
+                  清除筛选
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2">
+                {filteredArticles.map((article, i) => (
+                  <PostCard key={article.id} article={article} index={i} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

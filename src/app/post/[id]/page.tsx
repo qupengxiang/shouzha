@@ -9,13 +9,13 @@ interface Props {
 
 // 所有文章都要预生成路由（草稿也能预览）
 export async function generateStaticParams() {
-  const articles = getAllArticles();
+  const articles = await getAllArticles();
   return articles.map(a => ({ id: a.id }));
 }
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
-  const article = getArticleById(id);
+  const article = await getArticleById(id);
   if (!article) return {};
   // 草稿文章不暴露 SEO 信息
   if (!article.published) return { title: `${article.title} — 手札 [草稿]`, robots: 'noindex' };
@@ -30,15 +30,15 @@ async function isAdmin(): Promise<boolean> {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get('session_id')?.value;
   if (!sessionId) return false;
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return false;
-  const user = getUserById(session.userId);
+  const user = await getUserById(session.userId);
   return user?.role === 'admin';
 }
 
 export default async function PostPage({ params }: Props) {
   const { id } = await params;
-  const article = getArticleById(id);
+  const article = await getArticleById(id);
   if (!article) notFound();
 
   // 未发布的文章，只有管理员能看
@@ -46,7 +46,7 @@ export default async function PostPage({ params }: Props) {
   if (!article.published && !admin) notFound();
 
   // 上下篇导航只显示已发布的文章
-  const publishedArticles = getPublishedArticles();
+  const publishedArticles = await getPublishedArticles();
   const currentIndex = publishedArticles.findIndex(a => a.id === id);
   const prev = publishedArticles[currentIndex - 1];
   const next = publishedArticles[currentIndex + 1];

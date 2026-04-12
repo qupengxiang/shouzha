@@ -5,7 +5,7 @@ import { getSession } from '@/lib/db';
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const sessionId = req.cookies.get('session_id')?.value;
   if (!sessionId) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
 
   try {
@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    updateCategory(id, {
+    await updateCategory(id, {
       name: name.trim(),
       slug: sanitizedSlug,
       sortOrder: sortOrder ?? undefined,

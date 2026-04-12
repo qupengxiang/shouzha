@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSession, getUserById } from '@/lib/db';
 import { checkRateLimit, getClientIP, rateLimitResponse } from '@/lib/rateLimit';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
+// R2 配置
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'e58caa7334ca1c169afbdfc72a0129ed';
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'shouzha-uploads';
+const R2_API_TOKEN = process.env.R2_API_TOKEN || '';
+
+// 公开访问地址（需要在 R2 Dashboard 配置后填入）
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}`;
 
 // ── 文件类型配置 ─────────────────────────────────
 const ALLOWED_TYPES: Record<string, { mime: string[]; magic: [string, string][] }> = {
@@ -24,20 +27,19 @@ const ALLOWED_TYPES: Record<string, { mime: string[]; magic: [string, string][] 
   },
   webp: {
     mime: ['image/webp'],
-    magic: [['52494647', 'WEBP']], // RIFF....WEBP
+    magic: [['52494647', 'WEBP']],
   },
   svg: {
     mime: ['image/svg+xml'],
-    magic: [], // SVG 纯文本，后面单独过滤
+    magic: [],
   },
 };
 
-const MAX_SIZE     = 10 * 1024 * 1024;   // 10MB
-const MAX_REQUEST  = 5 * 1024 * 1024;  // 整体请求体上限 5MB（比 MAX_SIZE 小，防放大攻击）
+const MAX_SIZE = 10 * 1024 * 1024;
+const MAX_REQUEST = 5 * 1024 * 1024;
 const UPLOAD_WINDOW_MS = 60 * 1000;
-const UPLOAD_RATE_LIMIT = 10;            // 每分钟最多 10 次上传
+const UPLOAD_RATE_LIMIT = 10;
 
-// SVG 安全：禁止 script / on* / javascript:
 const SVG_FORBIDDEN = [/script/i, /on\w+\s*=/i, /javascript:/i, /data:/i, /<iframe/i];
 
 function validateMagicBytes(buffer: Buffer): string | null {
@@ -52,10 +54,45 @@ async function isAdmin(): Promise<boolean> {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get('session_id')?.value;
   if (!sessionId) return false;
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return false;
-  const user = getUserById(session.userId);
+  const user = await getUserById(session.userId);
   return user?.role === 'admin';
+}
+
+/**
+ * 上传文件到 R2
+ */
+async function uploadToR2(
+  key: string,
+  buffer: Buffer,
+  contentType: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${R2_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects/${key}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${R2_API_TOKEN}`,
+          'Content-Type': contentType,
+        },
+        body: new Uint8Array(buffer),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      console.error('R2 upload error:', data.errors);
+      return { success: false, error: data.errors?.[0]?.message || '上传失败' };
+    }
+
+    return { success: true, url: `${R2_PUBLIC_URL}/${key}` };
+  } catch (error) {
+    console.error('R2 upload exception:', error);
+    return { success: false, error: '网络错误' };
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -74,6 +111,11 @@ export async function POST(req: NextRequest) {
   // 权限校验
   if (!await isAdmin()) {
     return NextResponse.json({ error: '未登录或无权限' }, { status: 401 });
+  }
+
+  // 检查 R2 配置
+  if (!R2_API_TOKEN) {
+    return NextResponse.json({ error: 'R2 未配置' }, { status: 500 });
   }
 
   try {
@@ -115,25 +157,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 生成安全文件名（只保留字母数字）
+    // 生成安全文件名
     const safeExt = typeConfig.mime[0].split('/')[1].replace('jpeg', 'jpg');
-    const filename = `${uuidv4()}.${safeExt}`;
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 10);
+    const key = `uploads/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${timestamp}-${randomStr}.${safeExt}`;
 
-    // 按年月分目录
-    const now = new Date();
-    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const subDir = path.join(UPLOAD_DIR, yearMonth);
-    await mkdir(subDir, { recursive: true });
+    // 上传到 R2
+    const result = await uploadToR2(key, buffer, file.type);
 
-    const filePath = path.join(subDir, filename);
-    await writeFile(filePath, buffer);
-
-    const publicPath = `/uploads/${yearMonth}/${filename}`;
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || '上传失败' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      url: publicPath,
-      filename,
+      url: result.url,
+      key,
       size: buffer.length,
     });
   } catch (error) {

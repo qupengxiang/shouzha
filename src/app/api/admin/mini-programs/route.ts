@@ -12,10 +12,10 @@ export async function GET() {
   const sessionId = cookieStore.get('session_id')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const programs = getAllMiniPrograms();
+  const programs = await getAllMiniPrograms();
   return NextResponse.json(programs);
 }
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const sessionId = cookieStore.get('session_id')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '标题和链接不能为空' }, { status: 400 });
   }
 
-  createMiniProgram({
+  await createMiniProgram({
     id: generateId(),
     title,
     description: excerpt || '',

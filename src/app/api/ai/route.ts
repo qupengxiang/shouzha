@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!sessionId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return NextResponse.json({ error: 'Session expired' }, { status: 401 });
   }

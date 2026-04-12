@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
   
-  const articles = getAllArticles();
+  const articles = await getAllArticles();
   return NextResponse.json({ articles });
 }
 
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     updatedAt: new Date().toISOString(),
   };
 
-  createArticle(article);
+  await createArticle(article);
 
   return NextResponse.json({ article });
 }

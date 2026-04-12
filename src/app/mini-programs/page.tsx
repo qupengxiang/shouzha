@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 export default async function MiniProgramsPage() {
-  const programs = getPublishedMiniPrograms();
+  const programs = await getPublishedMiniPrograms();
 
   return (
     <div className="min-h-screen pt-14">

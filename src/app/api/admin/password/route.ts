@@ -40,12 +40,12 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 执行 ──────────────────────────────────────
-  const user = getUserById(session.userId);
+  const user = await getUserById(session.userId);
   if (!user) return NextResponse.json({ error: '用户不存在' }, { status: 404 });
 
   const valid = await verifyPassword(currentPassword, user.passwordHash as string);
   if (!valid) return NextResponse.json({ error: '当前密码错误' }, { status: 400 });
 
-  changePassword(session.userId, newPassword);
+  await changePassword(session.userId, newPassword);
   return NextResponse.json({ success: true, message: '密码修改成功' });
 }
