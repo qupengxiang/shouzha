@@ -1,0 +1,15 @@
+/**
+ * @opennextjs/cloudflare 生成
+ * @type {import("wrangler").Config}
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shouzha",
+  "compatibility_date": "2026-04-12",
+  "observability": {
+    "enabled": true
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
