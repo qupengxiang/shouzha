@@ -1,0 +1,292 @@
+/* ================================================
+   手札 · ByteMD 编辑器深度定制样式
+   ================================================ */
+
+/* 覆盖 ByteMD 默认变量 */
+.bytemd {
+  border: none !important;
+  height: 100% !important;
+  font-family: 'Noto Serif SC', Georgia, serif !important;
+}
+
+.bytemd-body {
+  height: calc(100vh - 220px) !important;
+  min-height: 400px;
+}
+
+/* 编辑器内容区 */
+.bytemd-editor {
+  background: transparent !important;
+  font-size: 1rem !important;
+  line-height: 1.9 !important;
+  padding: 0 0 120px 0 !important;
+}
+
+.bytemd-preview {
+  padding: 0 0 120px 0 !important;
+}
+
+/* 输入框 */
+.bytemd-editor .CodeMirror {
+  background: transparent !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace !important;
+  font-size: 0.9rem !important;
+  line-height: 1.8 !important;
+  color: #2d2a26 !important;
+  height: 100% !important;
+  padding: 0 !important;
+}
+
+.bytemd-editor .CodeMirror-lines {
+  padding: 0 !important;
+}
+
+.bytemd-editor .CodeMirror pre.CodeMirror-line,
+.bytemd-editor .CodeMirror pre.CodeMirror-line-like {
+  padding: 0 0 0.5em 0 !important;
+}
+
+/* 光标 */
+.bytemd-editor .CodeMirror-cursor {
+  border-left: 2px solid #d97706 !important;
+  border-right: none !important;
+  width: 0 !important;
+}
+
+/* 选中文本 */
+.bytemd-editor .CodeMirror-selected {
+  background: #fef3c7 !important;
+}
+
+/* 焦点状态 */
+.bytemd-editor:focus-within .CodeMirror {
+  outline: none !important;
+}
+
+/* Markdown 样式（预览 + 编辑器） */
+.bytemd-preview {
+  font-family: 'Noto Serif SC', Georgia, serif !important;
+  font-size: 1rem !important;
+  line-height: 1.9 !important;
+  color: #2d2a26 !important;
+}
+
+.bytemd-preview h1 {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  margin: 2em 0 0.75em !important;
+  line-height: 1.3 !important;
+  color: #1a1816 !important;
+  border-bottom: 2px solid #fde68a !important;
+  padding-bottom: 0.3em !important;
+}
+
+.bytemd-preview h2 {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  margin: 1.75em 0 0.6em !important;
+  color: #292524 !important;
+  border-bottom: 1px solid #fde68a !important;
+  padding-bottom: 0.2em !important;
+}
+
+.bytemd-preview h3 {
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  margin: 1.5em 0 0.5em !important;
+  color: #44403c !important;
+}
+
+.bytemd-preview h4 {
+  font-size: 1.05rem !important;
+  font-weight: 600 !important;
+  margin: 1.25em 0 0.4em !important;
+  color: #57534e !important;
+}
+
+.bytemd-preview p {
+  margin: 0 0 1.25em !important;
+  line-height: 1.9 !important;
+}
+
+.bytemd-preview blockquote {
+  border-left: 3px solid #d97706 !important;
+  background: #fffbeb !important;
+  margin: 1.5em 0 !important;
+  padding: 0.75em 1.25em !important;
+  border-radius: 0 8px 8px 0 !important;
+  color: #78716c !important;
+  font-style: italic !important;
+}
+
+.bytemd-preview blockquote p {
+  margin: 0 !important;
+}
+
+.bytemd-preview code {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  padding: 0.15em 0.4em !important;
+  border-radius: 4px !important;
+  font-size: 0.875em !important;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}
+
+.bytemd-preview pre {
+  background: #1e1b18 !important;
+  border-radius: 12px !important;
+  padding: 1.25em 1.5em !important;
+  margin: 1.5em 0 !important;
+  overflow-x: auto !important;
+  border: 1px solid #333 !important;
+}
+
+.bytemd-preview pre code {
+  background: transparent !important;
+  color: #e5e0d8 !important;
+  padding: 0 !important;
+  font-size: 0.875em !important;
+}
+
+.bytemd-preview a {
+  color: #b45309 !important;
+  text-decoration: underline !important;
+  text-decoration-color: #fcd34d !important;
+  text-underline-offset: 2px !important;
+}
+
+.bytemd-preview a:hover {
+  color: #d97706 !important;
+}
+
+.bytemd-preview ul,
+.bytemd-preview ol {
+  padding-left: 1.75em !important;
+  margin: 0 0 1.25em !important;
+}
+
+.bytemd-preview li {
+  margin: 0.35em 0 !important;
+  line-height: 1.75 !important;
+}
+
+.bytemd-preview li::marker {
+  color: #d97706 !important;
+}
+
+.bytemd-preview hr {
+  border: none !important;
+  border-top: 2px dashed #fde68a !important;
+  margin: 2.5em 0 !important;
+}
+
+.bytemd-preview table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 1.5em 0 !important;
+  font-size: 0.9em !important;
+}
+
+.bytemd-preview th {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  font-weight: 600 !important;
+  padding: 0.6em 1em !important;
+  border: 1px solid #fde68a !important;
+  text-align: left !important;
+}
+
+.bytemd-preview td {
+  padding: 0.5em 1em !important;
+  border: 1px solid #fde68a !important;
+}
+
+.bytemd-preview tr:nth-child(even) td {
+  background: #fffbeb !important;
+}
+
+.bytemd-preview img {
+  max-width: 100% !important;
+  border-radius: 8px !important;
+  margin: 1em 0 !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+}
+
+/* 任务列表 */
+.bytemd-preview input[type="checkbox"] {
+  accent-color: #d97706 !important;
+}
+
+/* 数学公式 */
+.bytemd-preview .bytemd-math {
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  border-radius: 8px !important;
+  padding: 0.75em 1em !important;
+  margin: 1em 0 !important;
+  overflow-x: auto !important;
+}
+
+/* Footnotes */
+.bytemd-preview .footnotes {
+  border-top: 1px solid #fde68a !important;
+  margin-top: 2.5em !important;
+  padding-top: 1em !important;
+  font-size: 0.85em !important;
+  color: #78716c !important;
+}
+
+/* Emoji (GitHub emoji) */
+.bytemd-preview img.emoji {
+  width: 1.2em !important;
+  height: 1.2em !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  margin: 0 0.1em !important;
+}
+
+/* 工具栏 */
+.bytemd-toolbar {
+  border-bottom: 1px solid #fde68a !important;
+  padding: 0.5em 1em !important;
+  background: #fffdf7 !important;
+  flex-wrap: wrap !important;
+  gap: 0.15em !important;
+}
+
+.bytemd-toolbar button {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 6px !important;
+  padding: 0.3em 0.5em !important;
+  color: #78716c !important;
+  font-size: 0.9em !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.bytemd-toolbar button:hover {
+  background: #fef3c7 !important;
+  color: #d97706 !important;
+}
+
+.bytemd-toolbar .bytemd-active {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  box-shadow: none !important;
+}
+
+.bytemd-toolbar-divider {
+  border-left: 1px solid #fde68a !important;
+  height: 1.4em !important;
+  margin: 0 0.25em !important;
+}
+
+/* GitHub 风格表格边框 */
+.bytemd-preview table {
+  border: 1px solid #e5e0d8 !important;
+}
+.bytemd-preview th,
+.bytemd-preview td {
+  border: 1px solid #e5e0d8 !important;
+}

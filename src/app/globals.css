@@ -1,0 +1,271 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Tailwind 颜色映射（必须写在 Tailwind 指令之后）
+   ============================================================ */
+
+/* 基础颜色别名 → 主题变量 */
+:root {
+  --color-paper: var(--bg-primary);
+  --color-paper-dark: var(--bg-card);
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-hover);
+  --color-secondary: var(--bg-secondary);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-warm: var(--accent);
+}
+
+/* ============================================================
+   8 套主题 CSS 变量
+   ============================================================ */
+
+:root {
+  /* 默认主题：米纸 */
+  --bg-primary: #FAF8F5;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F5F2EE;
+
+  --text-primary: #3D3A36;
+  --text-secondary: #5A5652;
+  --text-muted: #8B8680;
+
+  --accent: #C4956A;
+  --accent-hover: #A67D55;
+  --accent-light: #E8D5C4;
+
+  --border: #E8E4DF;
+  --border-light: #F0EDE8;
+
+  --shadow: rgba(0, 0, 0, 0.05);
+  --shadow-hover: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="parchment"] {
+  --bg-primary: #F5F0E6;
+  --bg-secondary: #FAF6F0;
+  --bg-card: #FDF9F3;
+  --bg-hover: #EDE6D6;
+  --text-primary: #4A4237;
+  --text-secondary: #6B6255;
+  --text-muted: #9A9083;
+  --accent: #B8956A;
+  --accent-hover: #9A7B56;
+  --accent-light: #E5D9C4;
+  --border: #D9CFC0;
+  --border-light: #E8E0D4;
+  --shadow: rgba(74, 66, 55, 0.06);
+  --shadow-hover: rgba(74, 66, 55, 0.12);
+}
+
+[data-theme="coral"] {
+  --bg-primary: #FDF6F4;
+  --bg-secondary: #FFF9F7;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F9EBE7;
+  --text-primary: #4A3F3D;
+  --text-secondary: #6B5E5B;
+  --text-muted: #9A8B87;
+  --accent: #D4847C;
+  --accent-hover: #B86A62;
+  --accent-light: #F2D4D0;
+  --border: #E8D5D0;
+  --border-light: #F0E2DE;
+  --shadow: rgba(212, 132, 124, 0.08);
+  --shadow-hover: rgba(212, 132, 124, 0.15);
+}
+
+[data-theme="sage"] {
+  --bg-primary: #F4F6F3;
+  --bg-secondary: #F9FAF8;
+  --bg-card: #FFFFFF;
+  --bg-hover: #E8EDE6;
+  --text-primary: #3D453D;
+  --text-secondary: #5A655A;
+  --text-muted: #8B968B;
+  --accent: #7A9A7A;
+  --accent-hover: #5F7A5F;
+  --accent-light: #C8D8C8;
+  --border: #D4DDD4;
+  --border-light: #E2E9E2;
+  --shadow: rgba(122, 154, 122, 0.08);
+  --shadow-hover: rgba(122, 154, 122, 0.15);
+}
+
+[data-theme="ochre"] {
+  --bg-primary: #F8F4F0;
+  --bg-secondary: #FDF9F5;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F0E8E0;
+  --text-primary: #4A3F36;
+  --text-secondary: #6B5E52;
+  --text-muted: #9A8E80;
+  --accent: #C4956A;
+  --accent-hover: #A67D55;
+  --accent-light: #E8D9C8;
+  --border: #E0D4C8;
+  --border-light: #ECE4DC;
+  --shadow: rgba(196, 149, 106, 0.08);
+  --shadow-hover: rgba(196, 149, 106, 0.15);
+}
+
+[data-theme="slate"] {
+  --bg-primary: #F5F4F2;
+  --bg-secondary: #FAFAF8;
+  --bg-card: #FFFFFF;
+  --bg-hover: #EDECE8;
+  --text-primary: #3D3C3A;
+  --text-secondary: #5A5956;
+  --text-muted: #8B8A86;
+  --accent: #8B8680;
+  --accent-hover: #6B665F;
+  --accent-light: #D4D0CA;
+  --border: #D9D6D0;
+  --border-light: #E8E5E0;
+  --shadow: rgba(61, 60, 58, 0.06);
+  --shadow-hover: rgba(61, 60, 58, 0.12);
+}
+
+[data-theme="herb"] {
+  --bg-primary: #F5F9F4;
+  --bg-secondary: #FAFDF8;
+  --bg-card: #FFFFFF;
+  --bg-hover: #E6F0E8;
+  --text-primary: #2D3F2D;
+  --text-secondary: #4A5F4A;
+  --text-muted: #7A907A;
+  --accent: #5A9E6A;
+  --accent-hover: #3D8A52;
+  --accent-light: #C2E0C4;
+  --border: #C8DCC8;
+  --border-light: #DCE8DC;
+  --shadow: rgba(90, 158, 106, 0.08);
+  --shadow-hover: rgba(90, 158, 106, 0.15);
+}
+
+[data-theme="moss"] {
+  --bg-primary: #F2F5F0;
+  --bg-secondary: #F7FAF3;
+  --bg-card: #FFFFFF;
+  --bg-hover: #E5EDE2;
+  --text-primary: #3A4238;
+  --text-secondary: #5A6658;
+  --text-muted: #8A9A88;
+  --accent: #6B8E6B;
+  --accent-hover: #4F704F;
+  --accent-light: #BED0BE;
+  --border: #C4D4C4;
+  --border-light: #D8E4D8;
+  --shadow: rgba(107, 142, 107, 0.08);
+  --shadow-hover: rgba(107, 142, 107, 0.15);
+}
+
+/* ============================================================
+   全局基础样式
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-card); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ============================================================
+   Prose 文章内容样式
+   ============================================================ */
+
+.prose {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+}
+
+.prose h2 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 2.5em 0 0.8em;
+  color: var(--text-primary);
+}
+
+.prose h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 2em 0 0.6em;
+}
+
+.prose p { margin-bottom: 1.5em; }
+
+.prose blockquote {
+  margin: 2em 0;
+  padding: 24px 32px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-card);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  line-height: 1.9;
+}
+
+.prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: var(--bg-card);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  color: #C4956A;
+}
+
+.prose pre {
+  background: #2C2C2C;
+  color: #E8D5C4;
+  padding: 24px;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 2em 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.prose ul, .prose ol { margin: 1.5em 0; padding-left: 1.5em; }
+.prose li { margin-bottom: 0.5em; }
+.prose strong { font-weight: 600; }
+.prose img { max-width: 100%; border-radius: 0.5rem; margin: 1.5em 0; }
+.prose a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.prose a:hover { color: var(--accent-hover); }
