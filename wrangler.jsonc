@@ -11,5 +11,28 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  // R2 bucket for incremental cache
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "shouzha-uploads"
+    }
+  ],
+  // D1 databases
+  "d1_databases": [
+    {
+      "binding": "NEXT_TAG_CACHE_D1",
+      "database_id": "908684be-d74b-48b5-b49b-50948d121a08",
+      "database_name": "shouzha-db"
+    },
+    {
+      "binding": "DB",
+      "database_id": "908684be-d74b-48b5-b49b-50948d121a08",
+      "database_name": "shouzha-db"
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://qupeng.top"
+  }
 }

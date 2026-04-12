@@ -1,8 +1,8 @@
 import { defineCloudflareConfig } from '@opennextjs/cloudflare';
 
 const config = defineCloudflareConfig({
-  incrementalCache: 'dynamo-d1',
-  tagCache: 'dynamo-d1',
+  incrementalCache: 'cf-r2-incremental-cache',
+  tagCache: 'd1-next-mode-tag-cache',
   queue: 'direct',
 });
 
