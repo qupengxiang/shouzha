@@ -381,6 +381,14 @@ async function uploadImageToEditor(file: File) {
 // Main editor page
 // ──────────────────────────────────────────────
 export default function EditorPage() {
+  return (
+    <ClientOnly fallback={<div className="flex items-center justify-center h-screen"><span className="text-gray-400">加载中...</span></div>}>
+      <EditorPageContent />
+    </ClientOnly>
+  );
+}
+
+function EditorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
