@@ -1,0 +1,91 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_API_TOKEN: ${{ secrets.R2_API_TOKEN }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+
+      - name: Deploy to Cloudflare Pages
+        run: |
+          ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          PROJECT="shouzha"
+
+          # Get or create project
+          echo "Checking existing project..."
+          PROJ=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/$PROJECT" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json")
+          
+          if echo "$PROJ" | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('success') else 1)"; then
+            echo "Project exists"
+          else
+            echo "Creating new project..."
+            curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"name\":\"$PROJECT\",\"production_branch\":\"main\",\"build_config\":{\"build_command\":\"npm run build\",\"destination_dir\":\".next\"}}"
+          fi
+
+          # Upload files
+          echo "Uploading build files..."
+          FILE_COUNT=$(find .next -type f | wc -l)
+          echo "Files to upload: $FILE_COUNT"
+
+          RESP=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/$PROJECT/deployments" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"files": []}')
+
+          JWT=$(echo "$RESP" | python3 -c "import json,sys; print(json.load(sys.stdin).get('result',{}).get('jwt',''))")
+          
+          if [ -z "$JWT" ]; then
+            echo "Failed to get upload JWT"
+            echo "$RESP"
+            exit 1
+          fi
+
+          echo "JWT obtained, uploading files..."
+          for FILE in $(find .next -type f); do
+            REL_PATH="${FILE#./}"
+            CONTENT_TYPE=$(file --mime-type -b "$FILE" 2>/dev/null || echo "application/octet-stream")
+            curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/$PROJECT/deployments/upload" \
+              -H "Authorization: Bearer $JWT" \
+              -H "Content-Type: application/octet-stream" \
+              -H "Cf-Uppload-Key: $REL_PATH" \
+              --data-binary "@$FILE" | python3 -c "import json,sys; d=json.load(sys.stdin); print('OK' if d.get('success') else f\"FAIL {REL_PATH}: {d.get('errors')}\")" || true
+          done
+
+          echo "Finalizing deployment..."
+          curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/$PROJECT/deployments" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\":\"main\",\"build_config\":{\"build_command\":\"npm run build\",\"destination_dir\":\".next\"},\"env_vars\":{}}" | python3 -c "import json,sys; d=json.load(sys.stdin); print('Deploy success!' if d.get('success') else f\"Error: {d.get('errors')}\"); print('URL:', d.get('result',{}).get('url',''))"

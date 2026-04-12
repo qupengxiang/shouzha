@@ -3,22 +3,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import PostCard from './PostCard';
 import Sidebar, { Category as SidebarCategory } from './Sidebar';
-
-interface Article {
-  id: string; title: string; category: string; categorySlug: string;
-  date: string; readTime: string; tags: string[]; excerpt: string; content?: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  createdAt: string;
-  icon?: string;
-  desc?: string;
-  color?: string;
-}
+import type { Article, Category } from '@/lib/db';
 
 interface Props { articles: Article[]; categories: Category[]; }
 

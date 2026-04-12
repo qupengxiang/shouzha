@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Article } from '@/data/articles';
+import type { Article } from '@/lib/db';
 
 const categoryIcons: Record<string, string> = {
   life: '🏠', learn: '📚', think: '💡', knowledge: '📦',
