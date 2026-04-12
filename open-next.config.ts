@@ -1,15 +1,9 @@
-import type { OpenNextConfig } from '@opennextjs/cloudflare';
+import { defineCloudflareConfig } from '@opennextjs/cloudflare';
 
-const config: OpenNextConfig = {
-  default: {
-    override: {
-      wrapper: 'edge',
-      converter: 'edge',
-      incrementalCache: 'dynamo-d1',
-      tagCache: 'dynamo-d1',
-      queue: 'dynamo-d1',
-    },
-  },
-};
+const config = defineCloudflareConfig({
+  incrementalCache: 'dynamo-d1',
+  tagCache: 'dynamo-d1',
+  queue: 'direct',
+});
 
 export default config;
