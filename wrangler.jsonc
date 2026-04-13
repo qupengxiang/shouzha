@@ -12,7 +12,15 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // R2 bucket for incremental cache
+  // OpenNext worker 入口
+  "main": ".open-next/worker.js",
+  // 静态资源
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+    "serve_single_page_app": true
+  },
+  // R2 bucket（缓存用）
   "r2_buckets": [
     {
       "binding": "NEXT_INC_CACHE_R2_BUCKET",

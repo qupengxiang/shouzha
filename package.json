@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "PATH=\"/usr/local/opt/node@20/bin:$PATH\" next dev --webpack",
-    "build": "next build && opennextjs-cloudflare build",
+    "build": "next build",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "start": "next start",
     "lint": "eslint"
   },

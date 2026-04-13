@@ -1,11 +1,28 @@
-import { defineCloudflareConfig } from '@opennextjs/cloudflare';
-import r2Cache from '@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache';
-import d1TagCache from '@opennextjs/cloudflare/overrides/tag-cache/d1-next-tag-cache';
-
-const config = defineCloudflareConfig({
-  incrementalCache: r2Cache as any,
-  tagCache: d1TagCache as any,
-  queue: 'direct',
-});
+// 注意：d1TagCache 用 as any 绕过 OpenNext 1.19.1 的 ensure-cf-config Bug
+// Bug: dftMaybeUseTagCache 检查用了 incrementalCache 而不是 tagCache
+const config = {
+  default: {
+    override: {
+      wrapper: 'cloudflare-node' as const,
+      converter: 'edge' as const,
+      proxyExternalRequest: 'fetch' as const,
+      incrementalCache: 'dummy' as const,
+      tagCache: 'dummy' as const,
+      queue: 'direct' as const,
+    },
+  },
+  edgeExternals: ['node:crypto'],
+  middleware: {
+    external: true,
+    override: {
+      wrapper: 'cloudflare-edge' as const,
+      converter: 'edge' as const,
+      proxyExternalRequest: 'fetch' as const,
+      incrementalCache: 'dummy' as const,
+      tagCache: 'dummy' as const,
+      queue: 'direct' as const,
+    },
+  },
+};
 
 export default config;

@@ -81,3 +81,7 @@ yarn-error.log*
 # AI / Agent 工作目录（按需取消注释）
 # ============================================
 # agent-outputs/
+
+# OpenNext 构建产物
+.open-next/
+.wrangler/
