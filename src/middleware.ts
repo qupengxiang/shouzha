@@ -29,6 +29,8 @@ const SECURITY_HEADERS = {
   ].join('; '),
 };
 
+import { verifyCsrfToken, setCsrfToken } from './lib/csrf';
+
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
@@ -49,6 +51,21 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.protocol = 'https:';
     return NextResponse.redirect(url);
+  }
+
+  // 为GET请求设置CSRF令牌
+  if (request.method === 'GET' && (pathname.startsWith('/admin') || pathname.startsWith('/api/'))) {
+    setCsrfToken(response);
+  }
+
+  // 为非GET请求验证CSRF令牌
+  if (request.method !== 'GET' && pathname.startsWith('/api/')) {
+    if (!verifyCsrfToken(request)) {
+      return new NextResponse(JSON.stringify({ error: 'CSRF验证失败' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
   }
 
   return response;

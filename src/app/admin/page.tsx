@@ -3,21 +3,31 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-// 简单的密码混淆函数，防止在控制台直接看到明文
+// 密码混淆函数，防止在控制台直接看到明文
 function obfuscatePassword(password: string): string {
-  // 使用时间戳作为随机因子
+  // 使用时间戳和随机字符串作为盐值
   const timestamp = Date.now();
-  const salt = `shouzha-${timestamp}`;
+  const randomSalt = Math.random().toString(36).substring(2, 15);
+  const salt = `shouzha-${timestamp}-${randomSalt}`;
   
-  // 简单的XOR加密 + Base64编码
+  // 双重XOR加密
   let result = '';
   for (let i = 0; i < password.length; i++) {
-    const charCode = password.charCodeAt(i) ^ salt.charCodeAt(i % salt.length);
+    // 第一层XOR
+    let charCode = password.charCodeAt(i) ^ salt.charCodeAt(i % salt.length);
+    // 第二层XOR（使用固定偏移）
+    charCode ^= 0x55;
     result += String.fromCharCode(charCode);
   }
   
-  // 返回混淆后的密码和时间戳
-  return btoa(`${result}:${timestamp}`);
+  // 添加校验和
+  let checksum = 0;
+  for (let i = 0; i < password.length; i++) {
+    checksum += password.charCodeAt(i);
+  }
+  
+  // 返回混淆后的密码、时间戳、随机盐值和校验和
+  return btoa(`${result}:${timestamp}:${randomSalt}:${checksum}`);
 }
 
 export default function AdminLogin() {
@@ -35,12 +45,21 @@ export default function AdminLogin() {
     setError('');
 
     try {
+      // 获取CSRF令牌
+      const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1];
+      if (!csrfToken) {
+        throw new Error('CSRF令牌缺失');
+      }
+
       // 混淆密码，防止在控制台直接看到明文
       const obfuscatedPassword = obfuscatePassword(password);
       
       const res = await fetch('/api/admin/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
         body: JSON.stringify({ username, password: obfuscatedPassword, isObfuscated: true }),
       });
 
@@ -52,7 +71,7 @@ export default function AdminLogin() {
         setError(data.error || '登录失败，请重试');
         setLoading(false);
       }
-    } catch {
+    } catch (err) {
       setError('网络错误，请重试');
       setLoading(false);
     }

@@ -28,8 +28,9 @@ export async function POST(req: NextRequest) {
   if (isObfuscated && password) {
     try {
       const decoded = atob(password);
-      const [encryptedPart, timestampStr] = decoded.split(':');
+      const [encryptedPart, timestampStr, randomSalt, checksumStr] = decoded.split(':');
       const timestamp = parseInt(timestampStr);
+      const checksum = parseInt(checksumStr);
       
       // 检查时间戳是否在合理范围内（5分钟内）
       const now = Date.now();
@@ -38,12 +39,28 @@ export async function POST(req: NextRequest) {
       }
       
       // 解密密码
-      const salt = `shouzha-${timestamp}`;
+      const salt = `shouzha-${timestamp}-${randomSalt}`;
       let decryptedPassword = '';
       for (let i = 0; i < encryptedPart.length; i++) {
-        const charCode = encryptedPart.charCodeAt(i) ^ salt.charCodeAt(i % salt.length);
+        // 第一层XOR（反向）
+        let charCode = encryptedPart.charCodeAt(i);
+        // 第二层XOR（使用固定偏移）
+        charCode ^= 0x55;
+        // 第一层XOR（反向）
+        charCode ^= salt.charCodeAt(i % salt.length);
         decryptedPassword += String.fromCharCode(charCode);
       }
+      
+      // 验证校验和
+      let calculatedChecksum = 0;
+      for (let i = 0; i < decryptedPassword.length; i++) {
+        calculatedChecksum += decryptedPassword.charCodeAt(i);
+      }
+      
+      if (calculatedChecksum !== checksum) {
+        return NextResponse.json({ error: '密码验证失败' }, { status: 400 });
+      }
+      
       password = decryptedPassword;
     } catch (e) {
       console.error('Failed to decrypt password:', e);
