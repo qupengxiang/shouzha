@@ -27,6 +27,19 @@ if (isDev) {
   }
 }
 
+// Cloudflare Workers D1 绑定
+let d1DB: any = null;
+try {
+  // 尝试获取 D1 绑定
+  // @ts-ignore - 类型定义问题，运行时存在
+  d1DB = globalThis.DB || globalThis.NEXT_TAG_CACHE_D1;
+  if (d1DB) {
+    console.log('Using Cloudflare D1 database binding');
+  }
+} catch (e) {
+  console.error('Failed to get D1 binding:', e);
+}
+
 // 初始化本地数据库
 if (sqliteDB) {
   console.log('Initializing local SQLite database...');
@@ -180,6 +193,11 @@ function d1Query<T = Record<string, unknown>>(sql: string, params: unknown[] = [
     });
   }
   
+  if (d1DB) {
+    return d1DB.prepare(sql).all(...params) as Promise<T[]>;
+  }
+  
+  // 后备：使用 REST API
   let i = 0;
   const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
   return fetch(
@@ -202,6 +220,12 @@ function d1Exec(sql: string, params: unknown[] = []): Promise<void> {
     });
   }
   
+  if (d1DB) {
+    d1DB.prepare(sql).run(...params);
+    return Promise.resolve();
+  }
+  
+  // 后备：使用 REST API
   let i = 0;
   const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
   return fetch(
