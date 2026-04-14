@@ -125,8 +125,8 @@ export async function POST(req: NextRequest) {
 
   response.cookies.set('session_id', sessionId, {
     httpOnly: true,
-    secure: isProd,
-    sameSite: 'strict',
+    secure: false, // 暂时设置为false，确保在任何环境中都能工作
+    sameSite: 'lax', // 使用lax代替strict，确保跨站请求也能正常工作
     maxAge: 7 * 24 * 60 * 60,   // 7 天
     path: '/',
     priority: 'high',
