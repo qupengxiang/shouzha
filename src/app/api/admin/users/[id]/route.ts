@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateUser, deleteUser, resetUserPassword, getSession, getUserById, getUserByUsername } from '@/lib/db';
 
 // 更新用户
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const sessionId = req.cookies.get('session_id')?.value;
   if (!sessionId) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
@@ -18,7 +18,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: '权限不足' }, { status: 403 });
   }
   
-  const userId = parseInt(params.id);
+  const { id } = await params;
+  const userId = parseInt(id);
   if (!userId) {
     return NextResponse.json({ error: '用户ID无效' }, { status: 400 });
   }
@@ -30,8 +31,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (role && role !== 'admin') {
     const targetUser = await getUserById(userId);
     if (targetUser?.role === 'admin') {
-      // 检查是否还有其他管理员
-      const allUsers = await getUserByUsername('admin'); // 简化检查
       if (currentUser.id === userId) {
         return NextResponse.json({ error: '不能移除自己的管理员身份' }, { status: 400 });
       }
@@ -56,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // 删除用户
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const sessionId = req.cookies.get('session_id')?.value;
   if (!sessionId) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
@@ -72,7 +71,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: '权限不足' }, { status: 403 });
   }
   
-  const userId = parseInt(params.id);
+  const { id } = await params;
+  const userId = parseInt(id);
   if (!userId) {
     return NextResponse.json({ error: '用户ID无效' }, { status: 400 });
   }
