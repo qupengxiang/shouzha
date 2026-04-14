@@ -51,11 +51,14 @@ export async function POST(req: NextRequest) {
   }
   
   try {
-    const userId = await createUser(username.trim(), password, email?.trim());
-    if (role !== 'user') {
-      await updateUser(userId, { role });
+    const result = await createUser(username.trim(), password, email?.trim());
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
-    return NextResponse.json({ success: true, userId });
+    if (role !== 'user') {
+      await updateUser(result.id, { role });
+    }
+    return NextResponse.json({ success: true, userId: result.id });
   } catch (e: unknown) {
     const err = e as Error;
     if (err.message?.includes('UNIQUE constraint')) {

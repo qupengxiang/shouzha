@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
   const valid = await verifyPassword(currentPassword, user.passwordHash as string);
   if (!valid) return NextResponse.json({ error: '当前密码错误' }, { status: 400 });
 
-  await changePassword(userInfo.userId, newPassword);
+  const result = await changePassword(userInfo.userId, newPassword);
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
   return NextResponse.json({ success: true, message: '密码修改成功' });
 }

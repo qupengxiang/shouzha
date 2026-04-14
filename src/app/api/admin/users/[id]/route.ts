@@ -46,7 +46,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
   
   if (newPassword?.trim() && newPassword.length >= 6) {
-    await resetUserPassword(userId, newPassword);
+    const result = await resetUserPassword(userId, newPassword);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
   }
   
   return NextResponse.json({ success: true });
