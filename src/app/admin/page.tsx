@@ -3,6 +3,23 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+// 简单的密码混淆函数，防止在控制台直接看到明文
+function obfuscatePassword(password: string): string {
+  // 使用时间戳作为随机因子
+  const timestamp = Date.now();
+  const salt = `shouzha-${timestamp}`;
+  
+  // 简单的XOR加密 + Base64编码
+  let result = '';
+  for (let i = 0; i < password.length; i++) {
+    const charCode = password.charCodeAt(i) ^ salt.charCodeAt(i % salt.length);
+    result += String.fromCharCode(charCode);
+  }
+  
+  // 返回混淆后的密码和时间戳
+  return btoa(`${result}:${timestamp}`);
+}
+
 export default function AdminLogin() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -18,10 +35,13 @@ export default function AdminLogin() {
     setError('');
 
     try {
+      // 混淆密码，防止在控制台直接看到明文
+      const obfuscatedPassword = obfuscatePassword(password);
+      
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password: obfuscatedPassword, isObfuscated: true }),
       });
 
       const data = await res.json();

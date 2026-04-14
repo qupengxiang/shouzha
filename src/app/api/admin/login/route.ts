@@ -15,14 +15,41 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 输入校验 ──────────────────────────────────
-  let body: { username?: string; password?: string };
+  let body: { username?: string; password?: string; isObfuscated?: boolean };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: '无效的请求体' }, { status: 400 });
   }
 
-  const { username, password } = body;
+  let { username, password, isObfuscated } = body;
+  
+  // 解密混淆后的密码
+  if (isObfuscated && password) {
+    try {
+      const decoded = atob(password);
+      const [encryptedPart, timestampStr] = decoded.split(':');
+      const timestamp = parseInt(timestampStr);
+      
+      // 检查时间戳是否在合理范围内（5分钟内）
+      const now = Date.now();
+      if (now - timestamp > 5 * 60 * 1000) {
+        return NextResponse.json({ error: '登录请求已过期，请重试' }, { status: 400 });
+      }
+      
+      // 解密密码
+      const salt = `shouzha-${timestamp}`;
+      let decryptedPassword = '';
+      for (let i = 0; i < encryptedPart.length; i++) {
+        const charCode = encryptedPart.charCodeAt(i) ^ salt.charCodeAt(i % salt.length);
+        decryptedPassword += String.fromCharCode(charCode);
+      }
+      password = decryptedPassword;
+    } catch (e) {
+      console.error('Failed to decrypt password:', e);
+      return NextResponse.json({ error: '无效的请求' }, { status: 400 });
+    }
+  }
 
   // 参数白名单：只允许字母数字下划线
   if (!username?.trim() || !/^[a-zA-Z0-9_]{1,32}$/.test(username.trim())) {
