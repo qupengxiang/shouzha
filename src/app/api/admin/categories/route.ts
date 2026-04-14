@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllCategories, createCategory, deleteCategory, getSession } from '@/lib/db';
+import { getAllCategories, createCategory, deleteCategory } from '@/lib/db';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth';
+
+async function getAuthUser(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!requireAuth(userInfo)) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
+  }
+  return { user: userInfo };
+}
 
 export async function GET(req: NextRequest) {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
+  
   const categories = await getAllCategories();
   return NextResponse.json(categories);
 }
 
 export async function POST(req: NextRequest) {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   try {
     const body = await req.json();
@@ -24,7 +30,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '名称和别名不能为空' }, { status: 400 });
     }
 
-    // Sanitize slug
     const sanitizedSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     if (!sanitizedSlug) {
       return NextResponse.json({ error: '别名格式无效' }, { status: 400 });
@@ -41,10 +46,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   try {
     const { searchParams } = new URL(req.url);

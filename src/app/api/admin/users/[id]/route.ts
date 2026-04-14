@@ -1,22 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateUser, deleteUser, resetUserPassword, getSession, getUserById, getUserByUsername } from '@/lib/db';
+import { updateUser, deleteUser, resetUserPassword, getUserById } from '@/lib/db';
+import { getAuthenticatedUser } from '@/lib/auth';
 
-// 更新用户
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
+async function requireAdmin(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!userInfo) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
   }
-  
-  const session = await getSession(sessionId);
-  if (!session) {
-    return NextResponse.json({ error: '会话已过期' }, { status: 401 });
-  }
-  
-  const currentUser = await getUserById(session.userId);
+  const currentUser = await getUserById(userInfo.userId);
   if (!currentUser || currentUser.role !== 'admin') {
-    return NextResponse.json({ error: '权限不足' }, { status: 403 });
+    return { error: NextResponse.json({ error: '权限不足' }, { status: 403 }) };
   }
+  return { user: currentUser };
+}
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireAdmin(req);
+  if ('error' in authResult) return authResult.error;
+  const currentUser = authResult.user;
   
   const { id } = await params;
   const userId = parseInt(id);
@@ -27,13 +28,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json();
   const { email, role, avatar, bio, newPassword } = body;
   
-  // 不能把最后一个管理员改成普通用户
   if (role && role !== 'admin') {
     const targetUser = await getUserById(userId);
-    if (targetUser?.role === 'admin') {
-      if (currentUser.id === userId) {
-        return NextResponse.json({ error: '不能移除自己的管理员身份' }, { status: 400 });
-      }
+    if (targetUser?.role === 'admin' && currentUser.id === userId) {
+      return NextResponse.json({ error: '不能移除自己的管理员身份' }, { status: 400 });
     }
   }
   
@@ -54,22 +52,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({ success: true });
 }
 
-// 删除用户
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
-  
-  const session = await getSession(sessionId);
-  if (!session) {
-    return NextResponse.json({ error: '会话已过期' }, { status: 401 });
-  }
-  
-  const currentUser = await getUserById(session.userId);
-  if (!currentUser || currentUser.role !== 'admin') {
-    return NextResponse.json({ error: '权限不足' }, { status: 403 });
-  }
+  const authResult = await requireAdmin(req);
+  if ('error' in authResult) return authResult.error;
+  const currentUser = authResult.user;
   
   const { id } = await params;
   const userId = parseInt(id);
@@ -77,7 +63,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: '用户ID无效' }, { status: 400 });
   }
   
-  // 不能删除自己
   if (currentUser.id === userId) {
     return NextResponse.json({ error: '不能删除自己的账号' }, { status: 400 });
   }

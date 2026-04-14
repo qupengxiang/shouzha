@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getArticleById, updateArticle, deleteArticle, getSession } from '@/lib/db';
+import { getArticleById, updateArticle, deleteArticle } from '@/lib/db';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth';
 
-async function getUserId(req: NextRequest): Promise<number | null> {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) return null;
-  const session = await getSession(sessionId);
-  return session?.userId || null;
+async function getAuthUser(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!requireAuth(userInfo)) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
+  }
+  return { user: userInfo };
 }
 
-// GET /api/admin/articles/[id] - get single article
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getUserId(req);
-  if (!userId) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
   
   const { id } = await params;
   const article = await getArticleById(id);
@@ -28,15 +27,12 @@ export async function GET(
   return NextResponse.json({ article });
 }
 
-// PUT /api/admin/articles/[id] - update article
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getUserId(req);
-  if (!userId) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
   
   const { id } = await params;
   const body = await req.json();
@@ -62,15 +58,12 @@ export async function PUT(
   return NextResponse.json({ article: updated });
 }
 
-// DELETE /api/admin/articles/[id] - delete article
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getUserId(req);
-  if (!userId) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
   
   const { id } = await params;
   

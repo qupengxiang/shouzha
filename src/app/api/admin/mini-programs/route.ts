@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { getSession, getAllMiniPrograms, createMiniProgram } from '@/lib/db';
+import { getAllMiniPrograms, createMiniProgram } from '@/lib/db';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth';
 import crypto from 'crypto';
 
 function generateId() {
   return crypto.randomUUID();
 }
 
-export async function GET() {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+async function getAuthUser(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!requireAuth(userInfo)) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
+  }
+  return { user: userInfo };
+}
 
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(req: NextRequest) {
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   const programs = await getAllMiniPrograms();
   return NextResponse.json(programs);
 }
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   const body = await req.json();
   const { title, excerpt, coverImage, openLink, published, sortOrder } = body;

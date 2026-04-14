@@ -1,35 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getAllArticles, getArticleById, createArticle, updateArticle, deleteArticle, getSession, getUserById } from '@/lib/db';
+import { getAllArticles, getArticleById, createArticle, deleteArticle } from '@/lib/db';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth';
 
-// Helper to check auth and get user info
-async function getUserInfo(req: NextRequest): Promise<{ userId: number; role: string } | null> {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) return null;
-  const session = await getSession(sessionId);
-  if (!session) return null;
-  const user = await getUserById(session.userId);
-  if (!user) return null;
-  return { userId: user.id, role: user.role };
+async function getAuthUser(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!requireAuth(userInfo)) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
+  }
+  return { user: userInfo };
 }
 
-// GET /api/admin/articles - list articles (admin sees all, others see their own)
 export async function GET(req: NextRequest) {
-  const userInfo = await getUserInfo(req);
-  if (!userInfo) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
   
-  const articles = await getAllArticles(userInfo.userId, userInfo.role);
+  const articles = await getAllArticles(authResult.user.userId, authResult.user.role);
   return NextResponse.json({ articles });
 }
 
-// POST /api/admin/articles - create article (auth required)
 export async function POST(req: NextRequest) {
-  const userInfo = await getUserInfo(req);
-  if (!userInfo) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
   
   const body = await req.json();
 
@@ -43,7 +35,6 @@ export async function POST(req: NextRequest) {
   };
   const category = body.category?.trim() || categoryMap[categorySlug] || '生活';
 
-  // 用 UUID v4 作为唯一 ID，标题只用于显示
   const id = crypto.randomUUID();
 
   const existing = await getArticleById(id);
@@ -62,7 +53,7 @@ export async function POST(req: NextRequest) {
     excerpt: body.excerpt || '',
     content: body.content || '',
     published: body.published || false,
-    authorId: userInfo.userId,  // 自动设置作者为当前用户
+    authorId: authResult.user.userId,
     viewCount: 0,
     likeCount: 0,
     commentCount: 0,
@@ -75,10 +66,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ article });
 }
 
-// DELETE /api/admin/articles?ids=id1,id2 - delete articles (auth required)
 export async function DELETE(req: NextRequest) {
-  const userInfo = await getUserInfo(req);
-  if (!userInfo) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   const { searchParams } = new URL(req.url);
   const ids = searchParams.get('ids');
@@ -88,6 +78,6 @@ export async function DELETE(req: NextRequest) {
   if (idList.length === 0) return NextResponse.json({ error: '无效的 ids' }, { status: 400 });
   if (idList.length > 50) return NextResponse.json({ error: '一次最多删除 50 篇' }, { status: 400 });
 
-  idList.forEach(id => deleteArticle(id));
+  await Promise.all(idList.map(id => deleteArticle(id)));
   return NextResponse.json({ success: true, deleted: idList.length });
 }

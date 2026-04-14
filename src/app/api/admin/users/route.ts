@@ -1,27 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllUsers, createUser, updateUser, deleteUser, resetUserPassword, getSession, getUserById } from '@/lib/db';
-import { checkRateLimit, getClientIP, rateLimitResponse } from '@/lib/rateLimit';
+import { getAllUsers, createUser, updateUser, getUserById } from '@/lib/db';
+import { getAuthenticatedUser } from '@/lib/auth';
 
-// 获取所有用户
-export async function GET(req: NextRequest) {
-  // 验证管理员身份
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
+async function requireAdmin(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!userInfo) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
   }
-  
-  const session = await getSession(sessionId);
-  if (!session) {
-    return NextResponse.json({ error: '会话已过期' }, { status: 401 });
-  }
-  
-  const user = await getUserById(session.userId);
+  const user = await getUserById(userInfo.userId);
   if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: '权限不足' }, { status: 403 });
+    return { error: NextResponse.json({ error: '权限不足' }, { status: 403 }) };
   }
+  return { success: true };
+}
+
+export async function GET(req: NextRequest) {
+  const authResult = await requireAdmin(req);
+  if ('error' in authResult) return authResult.error;
   
   const users = await getAllUsers();
-  // 返回用户列表，不包含密码哈希
   const safeUsers = users.map(u => ({
     id: u.id,
     username: u.username,
@@ -36,22 +33,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ users: safeUsers });
 }
 
-// 创建新用户
 export async function POST(req: NextRequest) {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
-  
-  const session = await getSession(sessionId);
-  if (!session) {
-    return NextResponse.json({ error: '会话已过期' }, { status: 401 });
-  }
-  
-  const user = await getUserById(session.userId);
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: '权限不足' }, { status: 403 });
-  }
+  const authResult = await requireAdmin(req);
+  if ('error' in authResult) return authResult.error;
   
   const body = await req.json();
   const { username, password, email, role } = body;
@@ -68,7 +52,6 @@ export async function POST(req: NextRequest) {
   
   try {
     const userId = await createUser(username.trim(), password, email?.trim());
-    // 设置角色（createUser 默认是 user）
     if (role !== 'user') {
       await updateUser(userId, { role });
     }

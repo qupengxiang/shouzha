@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { getSession, getMiniProgramById, updateMiniProgram, deleteMiniProgram } from '@/lib/db';
+import { getMiniProgramById, updateMiniProgram, deleteMiniProgram } from '@/lib/db';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth';
+
+async function getAuthUser(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!requireAuth(userInfo)) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
+  }
+  return { user: userInfo };
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   const { id } = await params;
   const program = await getMiniProgramById(id);
@@ -18,12 +22,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   const { id } = await params;
   const body = await req.json();
@@ -38,12 +38,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   const { id } = await params;
   await deleteMiniProgram(id);

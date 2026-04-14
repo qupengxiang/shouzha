@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateCategory } from '@/lib/db';
-import { getSession } from '@/lib/db';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth';
+
+async function getAuthUser(req: NextRequest) {
+  const userInfo = await getAuthenticatedUser(req);
+  if (!requireAuth(userInfo)) {
+    return { error: NextResponse.json({ error: '未登录' }, { status: 401 }) };
+  }
+  return { user: userInfo };
+}
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const sessionId = req.cookies.get('session_id')?.value;
-  if (!sessionId) return NextResponse.json({ error: '未登录' }, { status: 401 });
-  const session = await getSession(sessionId);
-  if (!session) return NextResponse.json({ error: '登录已过期' }, { status: 401 });
+  const authResult = await getAuthUser(req);
+  if ('error' in authResult) return authResult.error;
 
   try {
     const { id } = await params;
