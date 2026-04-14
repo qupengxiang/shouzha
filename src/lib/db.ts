@@ -128,11 +128,34 @@ function rowToSession(r: Record<string, unknown>): Session {
 
 // ─── 密码 ─────────────────────────────────────────────────────────────────────
 const SALT = 'shouzha-salt-v1';
-export function hashPassword(password: string): string {
-  return crypto.pbkdf2Sync(password, SALT, 100000, 64, 'sha256').toString('hex');
+const SALT_BYTES = new TextEncoder().encode(SALT);
+
+export async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: SALT_BYTES,
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    64 * 8 // 64 bytes = 512 bits
+  );
+  const hashArray = Array.from(new Uint8Array(bits));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
-export function verifyPassword(password: string, hashed: string): boolean {
-  return hashPassword(password) === hashed;
+
+export async function verifyPassword(password: string, hashed: string): Promise<boolean> {
+  const computed = await hashPassword(password);
+  return computed === hashed;
 }
 
 // ─── 用户 ──────────────────────────────────────────────────────────────────────
@@ -148,15 +171,17 @@ export async function createUser(username: string, password: string, email?: str
   const now = new Date().toISOString();
   const rows = await d1Query<{ maxId: number }>('SELECT MAX(id) as maxId FROM users');
   const maxId = rows[0]?.maxId ?? 0;
+  const hashedPassword = await hashPassword(password);
   await d1Exec(
     'INSERT INTO users (id, username, email, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [maxId + 1, username, email ?? null, hashPassword(password), 'user', now, now]
+    [maxId + 1, username, email ?? null, hashedPassword, 'user', now, now]
   );
   return maxId + 1;
 }
 export async function changePassword(userId: number, newPassword: string): Promise<void> {
   const now = new Date().toISOString();
-  await d1Exec('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', [hashPassword(newPassword), now, userId]);
+  const hashedPassword = await hashPassword(newPassword);
+  await d1Exec('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', [hashedPassword, now, userId]);
 }
 export async function updateLastLogin(userId: number): Promise<void> {
   const now = new Date().toISOString();
