@@ -47,19 +47,23 @@ export default function AdminLogin() {
     try {
       // 获取CSRF令牌
       const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1];
-      if (!csrfToken) {
-        throw new Error('CSRF令牌缺失');
-      }
-
+      
       // 混淆密码，防止在控制台直接看到明文
       const obfuscatedPassword = obfuscatePassword(password);
       
+      // 构建请求头
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      // 如果有CSRF令牌，添加到请求头
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+      
       const res = await fetch('/api/admin/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
+        headers,
         body: JSON.stringify({ username, password: obfuscatedPassword, isObfuscated: true }),
       });
 

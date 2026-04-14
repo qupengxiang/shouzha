@@ -18,11 +18,11 @@ const SECURITY_HEADERS = {
   // 内容安全策略（生产环境可收紧）
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // 开发需要，部署后可收紧
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com", // 允许Cloudflare Insights脚本
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://static.cloudflareinsights.com", // 允许Cloudflare Insights图片
     "font-src 'self'",
-    "connect-src 'self'",
+    "connect-src 'self' https://cloudflareinsights.com", // 允许Cloudflare Insights连接
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -58,8 +58,8 @@ export function middleware(request: NextRequest) {
     setCsrfToken(response);
   }
 
-  // 为非GET请求验证CSRF令牌
-  if (request.method !== 'GET' && pathname.startsWith('/api/')) {
+  // 为非GET请求验证CSRF令牌（除了登录接口）
+  if (request.method !== 'GET' && pathname.startsWith('/api/') && !pathname.startsWith('/api/admin/login')) {
     if (!verifyCsrfToken(request)) {
       return new NextResponse(JSON.stringify({ error: 'CSRF验证失败' }), {
         status: 403,
