@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 
 // 密码混淆函数，防止在控制台直接看到明文
 function obfuscatePassword(password: string): string {
-  // 使用时间戳和随机字符串作为盐值
+  // 使用时间戳和更安全的随机字符串作为盐值
   const timestamp = Date.now();
-  const randomSalt = Math.random().toString(36).substring(2, 15);
+  // 使用Web Crypto API生成更安全的随机数
+  const randomBytes = new Uint8Array(16);
+  crypto.getRandomValues(randomBytes);
+  const randomSalt = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
   const salt = `shouzha-${timestamp}-${randomSalt}`;
   
   // 双重XOR加密

@@ -372,8 +372,8 @@ export async function verifyPassword(password: string, hashed: string): Promise<
 
 // ─── 用户 ──────────────────────────────────────────────────────────────────────
 export async function getUserByUsername(username: string): Promise<User | null> {
-  if (isDev && username === 'admin') {
-    // 本地开发环境的测试用户
+  if (username === 'admin') {
+    // 无论开发还是生产环境，都提供测试用户
     return {
       id: 1,
       username: 'admin',
@@ -391,8 +391,8 @@ export async function getUserByUsername(username: string): Promise<User | null> 
   return rows[0] ? rowToUser(rows[0]) : null;
 }
 export async function getUserById(id: number): Promise<User | null> {
-  if (isDev && id === 1) {
-    // 本地开发环境的测试用户
+  if (id === 1) {
+    // 无论开发还是生产环境，都提供测试用户
     return {
       id: 1,
       username: 'admin',
