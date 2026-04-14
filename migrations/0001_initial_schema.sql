@@ -112,7 +112,7 @@ VALUES (
   1,
   'admin',
   'admin@shouzha.local',
-  '5c0720d5a67de5a8d4d7a6d7c1e9b3a4c5f8d2e1a3b5c7d9e0f1a2b3c4d5e6f7',
+  '4b6ad5ed413db5ba33d168d0c951e995236eb2a2d7205cdb3835731ccc71dd97540be2b02ccbd29bc3fbfd2b85b7ff3bdf6fd3c36eb273816a49cddfbfdd1486',
   'admin',
   '系统管理员',
   datetime('now'),
