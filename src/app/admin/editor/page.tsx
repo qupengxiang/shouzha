@@ -13,7 +13,7 @@ import { Link as Link_ } from '@tiptap/extension-link';
 import { Underline } from '@tiptap/extension-underline';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Image as TiptapImage } from '@tiptap/extension-image';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 import ClientOnly from '@/components/ClientOnly';
 import './editor.css';
 
