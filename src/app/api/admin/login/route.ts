@@ -33,15 +33,25 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 认证 ──────────────────────────────────────
+  console.log('Login attempt with username:', username.trim());
+  console.log('Environment:', process.env.NODE_ENV);
+  
   const user = await getUserByUsername(username.trim());
+  console.log('Retrieved user:', user);
+  
   if (!user) {
     // 故意延时，防止通过响应时间判断用户是否存在
     await new Promise(r => setTimeout(r, 200 + Math.random() * 100));
     return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
   }
 
-  // 验证密码（crypto.createHash 是同步的，await 无害但保持一致）
-  const valid = await verifyPassword(password, user.passwordHash as string);
+  // 验证密码
+  console.log('Stored password hash:', user.passwordHash);
+  console.log('Password hash length:', user.passwordHash.length);
+  
+  const valid = await verifyPassword(password, user.passwordHash);
+  console.log('Password verification result:', valid);
+  
   if (!valid) {
     await new Promise(r => setTimeout(r, 200 + Math.random() * 100));
     return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });

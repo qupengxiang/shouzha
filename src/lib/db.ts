@@ -1,15 +1,185 @@
 /**
- * 手札数据库层 — Cloudflare D1 REST API
+ * 手札数据库层
+ * 本地开发: SQLite (better-sqlite3)
+ * 生产环境: Cloudflare D1 REST API
  * D1 表结构使用 snake_case 列名
  */
 import crypto from 'crypto';
 
 // ─── 配置 ─────────────────────────────────────────────────────────────────────
+const isDev = process.env.NODE_ENV === 'development';
 const ACCOUNT_ID  = process.env.CLOUDFLARE_ACCOUNT_ID ?? 'e58caa7334ca1c169afbdfc72a0129ed';
 const DATABASE_ID = process.env.D1_DATABASE_ID        ?? '908684be-d74b-48b5-b49b-50948d121a08';
 const API_TOKEN   = process.env.CLOUDFLARE_API_TOKEN   ?? '';
 
+// 本地 SQLite 数据库
+let sqliteDB: any = null;
+if (isDev) {
+  try {
+    const Database = require('better-sqlite3');
+    const path = require('path');
+    const dbPath = path.join(process.cwd(), 'data.db');
+    sqliteDB = new Database(dbPath);
+    sqliteDB.pragma('journal_mode = WAL');
+    console.log('Using local SQLite database:', dbPath);
+  } catch (e) {
+    console.error('Failed to load better-sqlite3:', e);
+  }
+}
+
+// 初始化本地数据库
+if (sqliteDB) {
+  console.log('Initializing local SQLite database...');
+  
+  try {
+    // 执行初始化 SQL
+    sqliteDB.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user',
+        avatar TEXT,
+        bio TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_login_at TEXT
+      );
+      
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username);
+      
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+      
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+      
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
+      CREATE INDEX IF NOT EXISTS idx_categories_sort ON categories(sort_order);
+      
+      CREATE TABLE IF NOT EXISTS articles (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        category_id TEXT,
+        category_slug TEXT,
+        category_name TEXT,
+        date TEXT,
+        read_time TEXT,
+        tags TEXT NOT NULL DEFAULT '[]',
+        excerpt TEXT,
+        content TEXT NOT NULL,
+        cover_image TEXT,
+        published INTEGER NOT NULL DEFAULT 0,
+        author_id INTEGER,
+        view_count INTEGER NOT NULL DEFAULT 0,
+        like_count INTEGER NOT NULL DEFAULT 0,
+        comment_count INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+        FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published);
+      CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_slug);
+      CREATE INDEX IF NOT EXISTS idx_articles_date ON articles(date);
+      
+      CREATE TABLE IF NOT EXISTS mini_programs (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        cover_image TEXT,
+        open_link TEXT NOT NULL,
+        published INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_mini_programs_published ON mini_programs(published);
+      CREATE INDEX IF NOT EXISTS idx_mini_programs_sort ON mini_programs(sort_order);
+      
+      CREATE TABLE IF NOT EXISTS comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id TEXT NOT NULL,
+        user_id INTEGER,
+        parent_id INTEGER,
+        content TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'approved',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_comments_article ON comments(article_id);
+    `);
+    console.log('✓ Tables created successfully');
+    
+    // 插入默认管理员（密码: jianguo2026）
+    const adminExists = sqliteDB.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get('admin');
+    if (adminExists.count === 0) {
+      const hashedPassword = '4b6ad5ed413db5ba33d168d0c951e995236eb2a2d7205cdb3835731ccc71dd97540be2b02ccbd29bc3fbfd2b85b7ff3bdf6fd3c36eb273816a49cddfbfdd1486';
+      const now = new Date().toISOString();
+      sqliteDB.prepare(`
+        INSERT INTO users (id, username, email, password_hash, role, bio, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(1, 'admin', 'admin@shouzha.local', hashedPassword, 'admin', '系统管理员', now, now);
+      console.log('✓ Created default admin user: admin / jianguo2026');
+    } else {
+      console.log('✓ Admin user already exists');
+    }
+    
+    // 插入初始分类
+    const categoryCount = sqliteDB.prepare('SELECT COUNT(*) as count FROM categories').get();
+    if (categoryCount.count === 0) {
+      const now = new Date().toISOString();
+      const categories = [
+        { id: '1', name: '生活', slug: 'life', sort_order: 1 },
+        { id: '2', name: '学习与工作', slug: 'learn', sort_order: 2 },
+        { id: '3', name: '思考与成长', slug: 'think', sort_order: 3 },
+        { id: '4', name: '知识积累', slug: 'knowledge', sort_order: 4 }
+      ];
+      const insertCategory = sqliteDB.prepare(`
+        INSERT INTO categories (id, name, slug, sort_order, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      categories.forEach(cat => {
+        insertCategory.run(cat.id, cat.name, cat.slug, cat.sort_order, now);
+      });
+      console.log('✓ Created initial categories');
+    } else {
+      console.log('✓ Categories already exist');
+    }
+    
+    console.log('✓ Local database initialized successfully');
+  } catch (error) {
+    console.error('Error initializing database:', error);
+  }
+}
+
 function d1Query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
+  if (sqliteDB) {
+    return new Promise((resolve) => {
+      const stmt = sqliteDB.prepare(sql);
+      const rows = stmt.all(...params);
+      resolve(rows as T[]);
+    });
+  }
+  
   let i = 0;
   const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
   return fetch(
@@ -24,6 +194,14 @@ function d1Query<T = Record<string, unknown>>(sql: string, params: unknown[] = [
 }
 
 function d1Exec(sql: string, params: unknown[] = []): Promise<void> {
+  if (sqliteDB) {
+    return new Promise((resolve) => {
+      const stmt = sqliteDB.prepare(sql);
+      stmt.run(...params);
+      resolve();
+    });
+  }
+  
   let i = 0;
   const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
   return fetch(
@@ -160,10 +338,40 @@ export async function verifyPassword(password: string, hashed: string): Promise<
 
 // ─── 用户 ──────────────────────────────────────────────────────────────────────
 export async function getUserByUsername(username: string): Promise<User | null> {
+  if (isDev && username === 'admin') {
+    // 本地开发环境的测试用户
+    return {
+      id: 1,
+      username: 'admin',
+      email: 'admin@shouzha.local',
+      passwordHash: '4b6ad5ed413db5ba33d168d0c951e995236eb2a2d7205cdb3835731ccc71dd97540be2b02ccbd29bc3fbfd2b85b7ff3bdf6fd3c36eb273816a49cddfbfdd1486',
+      role: 'admin',
+      bio: '系统管理员',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString()
+    };
+  }
+  
   const rows = await d1Query<Record<string, unknown>>('SELECT * FROM users WHERE username = ? LIMIT 1', [username]);
   return rows[0] ? rowToUser(rows[0]) : null;
 }
 export async function getUserById(id: number): Promise<User | null> {
+  if (isDev && id === 1) {
+    // 本地开发环境的测试用户
+    return {
+      id: 1,
+      username: 'admin',
+      email: 'admin@shouzha.local',
+      passwordHash: '4b6ad5ed413db5ba33d168d0c951e995236eb2a2d7205cdb3835731ccc71dd97540be2b02ccbd29bc3fbfd2b85b7ff3bdf6fd3c36eb273816a49cddfbfdd1486',
+      role: 'admin',
+      bio: '系统管理员',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString()
+    };
+  }
+  
   const rows = await d1Query<Record<string, unknown>>('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
   return rows[0] ? rowToUser(rows[0]) : null;
 }
