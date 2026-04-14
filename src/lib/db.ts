@@ -30,9 +30,13 @@ if (isDev) {
 // Cloudflare Workers D1 绑定
 let d1DB: any = null;
 try {
-  // 尝试获取 D1 绑定
+  // 尝试获取 D1 绑定（在 Workers 环境中通过 env 对象）
   // @ts-ignore - 类型定义问题，运行时存在
-  d1DB = globalThis.DB || globalThis.NEXT_TAG_CACHE_D1;
+  d1DB = (globalThis as any).env?.DB || (globalThis as any).env?.NEXT_TAG_CACHE_D1;
+  if (!d1DB) {
+    // 尝试传统方式
+    d1DB = (globalThis as any).DB || (globalThis as any).NEXT_TAG_CACHE_D1;
+  }
   if (d1DB) {
     console.log('Using Cloudflare D1 database binding');
   }
@@ -558,12 +562,17 @@ export async function getSession(sessionId: string): Promise<{ userId: number; e
     const s = rows[0];
     if (!s) return null;
     if (new Date(s.expires_at as string) < new Date()) {
-      await d1Exec('DELETE FROM sessions WHERE id = ?', [sessionId]);
+      try {
+        await d1Exec('DELETE FROM sessions WHERE id = ?', [sessionId]);
+      } catch (e) {
+        console.error('Failed to delete expired session from database:', e);
+      }
       return null;
     }
     return { userId: s.user_id as number, expiresAt: s.expires_at as string };
   } catch (error) {
     console.error('Failed to get session from database:', error);
+    // 数据库连接失败时，返回空结果，但不阻止后续操作
     return null;
   }
 }
