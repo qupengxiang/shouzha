@@ -498,27 +498,85 @@ export async function resetUserPassword(userId: number, newPassword: string): Pr
 }
 
 // ─── Session ───────────────────────────────────────────────────────────────────
+
+// 内存会话存储（作为数据库的备选）
+interface SessionData {
+  userId: number;
+  expiresAt: string;
+  createdAt: string;
+}
+
+const memorySessions = new Map<string, SessionData>();
+
+// 定期清理过期会话
+setInterval(() => {
+  const now = new Date();
+  for (const [sessionId, session] of memorySessions.entries()) {
+    if (new Date(session.expiresAt) < now) {
+      memorySessions.delete(sessionId);
+    }
+  }
+}, 60000); // 每分钟清理一次
+
 export function generateSessionId(): string { return crypto.randomUUID(); }
 export async function createSession(userId: number): Promise<string> {
   const now = new Date();
   const sessionId = generateSessionId();
   const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  await d1Exec('INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
-    [sessionId, userId, expiresAt, now.toISOString()]);
+  const sessionData: SessionData = {
+    userId,
+    expiresAt,
+    createdAt: now.toISOString()
+  };
+  
+  // 尝试存储到数据库
+  try {
+    await d1Exec('INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
+      [sessionId, userId, expiresAt, now.toISOString()]);
+  } catch (error) {
+    console.error('Failed to store session in database:', error);
+    // 数据库失败时，存储到内存
+    memorySessions.set(sessionId, sessionData);
+  }
+  
   return sessionId;
 }
 export async function getSession(sessionId: string): Promise<{ userId: number; expiresAt: string } | null> {
-  const rows = await d1Query<Record<string, unknown>>('SELECT * FROM sessions WHERE id = ? LIMIT 1', [sessionId]);
-  const s = rows[0];
-  if (!s) return null;
-  if (new Date(s.expires_at as string) < new Date()) {
-    await d1Exec('DELETE FROM sessions WHERE id = ?', [sessionId]);
+  // 先从内存中获取
+  const memorySession = memorySessions.get(sessionId);
+  if (memorySession) {
+    if (new Date(memorySession.expiresAt) < new Date()) {
+      memorySessions.delete(sessionId);
+      return null;
+    }
+    return { userId: memorySession.userId, expiresAt: memorySession.expiresAt };
+  }
+  
+  // 从数据库获取
+  try {
+    const rows = await d1Query<Record<string, unknown>>('SELECT * FROM sessions WHERE id = ? LIMIT 1', [sessionId]);
+    const s = rows[0];
+    if (!s) return null;
+    if (new Date(s.expires_at as string) < new Date()) {
+      await d1Exec('DELETE FROM sessions WHERE id = ?', [sessionId]);
+      return null;
+    }
+    return { userId: s.user_id as number, expiresAt: s.expires_at as string };
+  } catch (error) {
+    console.error('Failed to get session from database:', error);
     return null;
   }
-  return { userId: s.user_id as number, expiresAt: s.expires_at as string };
 }
 export async function deleteSession(sessionId: string): Promise<void> {
-  await d1Exec('DELETE FROM sessions WHERE id = ?', [sessionId]);
+  // 从内存中删除
+  memorySessions.delete(sessionId);
+  
+  // 从数据库中删除
+  try {
+    await d1Exec('DELETE FROM sessions WHERE id = ?', [sessionId]);
+  } catch (error) {
+    console.error('Failed to delete session from database:', error);
+  }
 }
 
 // ─── 文章 ─────────────────────────────────────────────────────────────────────
