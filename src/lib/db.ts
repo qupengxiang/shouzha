@@ -8,9 +8,9 @@ import crypto from 'crypto';
 
 // ─── 配置 ─────────────────────────────────────────────────────────────────────
 const isDev = process.env.NODE_ENV === 'development';
-const ACCOUNT_ID  = process.env.CLOUDFLARE_ACCOUNT_ID ?? 'e58caa7334ca1c169afbdfc72a0129ed';
-const DATABASE_ID = process.env.D1_DATABASE_ID        ?? '908684be-d74b-48b5-b49b-50948d121a08';
-const API_TOKEN   = process.env.CLOUDFLARE_API_TOKEN   ?? '';
+const ACCOUNT_ID  = process.env.CLOUDFLARE_ACCOUNT_ID;
+const DATABASE_ID = process.env.D1_DATABASE_ID;
+const API_TOKEN   = process.env.CLOUDFLARE_API_TOKEN;
 
 // 本地 SQLite 数据库
 let sqliteDB: any = null;
@@ -197,18 +197,23 @@ function d1Query<T = Record<string, unknown>>(sql: string, params: unknown[] = [
     return d1DB.prepare(sql).all(...params) as Promise<T[]>;
   }
   
-  // 后备：使用 REST API
-  let i = 0;
-  const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
-  return fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/d1/database/${DATABASE_ID}/query`,
-    {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${API_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sql: d1Sql, params }),
-    }
-  ).then(r => r.json())
-    .then((j: { result?: { results: T[] }[] }) => j.result?.[0]?.results ?? []);
+  // 后备：使用 REST API（仅在有配置时）
+  if (ACCOUNT_ID && DATABASE_ID && API_TOKEN) {
+    let i = 0;
+    const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
+    return fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/d1/database/${DATABASE_ID}/query`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${API_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql: d1Sql, params }),
+      }
+    ).then(r => r.json())
+      .then((j: { result?: { results: T[] }[] }) => j.result?.[0]?.results ?? []);
+  }
+  
+  // 无数据库配置时返回空结果
+  return Promise.resolve([]);
 }
 
 function d1Exec(sql: string, params: unknown[] = []): Promise<void> {
@@ -225,17 +230,22 @@ function d1Exec(sql: string, params: unknown[] = []): Promise<void> {
     return Promise.resolve();
   }
   
-  // 后备：使用 REST API
-  let i = 0;
-  const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
-  return fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/d1/database/${DATABASE_ID}/query`,
-    {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${API_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sql: d1Sql, params }),
-    }
-  ).then(r => r.json()).then(() => {});
+  // 后备：使用 REST API（仅在有配置时）
+  if (ACCOUNT_ID && DATABASE_ID && API_TOKEN) {
+    let i = 0;
+    const d1Sql = sql.replace(/\?/g, () => `$${++i}`);
+    return fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/d1/database/${DATABASE_ID}/query`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${API_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql: d1Sql, params }),
+      }
+    ).then(r => r.json()).then(() => {});
+  }
+  
+  // 无数据库配置时返回空结果
+  return Promise.resolve();
 }
 
 // ─── 类型（API 层用 camelCase，内部统一用 D1 snake_case）─────────────────────────
@@ -399,7 +409,30 @@ export async function getUserById(id: number): Promise<User | null> {
   const rows = await d1Query<Record<string, unknown>>('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
   return rows[0] ? rowToUser(rows[0]) : null;
 }
-export async function createUser(username: string, password: string, email?: string): Promise<number> {
+// 密码强度检查
+export function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
+  if (password.length < 8) {
+    return { valid: false, message: '密码长度至少8位' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: '密码必须包含大写字母' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: '密码必须包含数字' };
+  }
+  if (!/[!@#$%^&*]/.test(password)) {
+    return { valid: false, message: '密码必须包含特殊字符' };
+  }
+  return { valid: true };
+}
+
+export async function createUser(username: string, password: string, email?: string): Promise<{ id: number; error?: string }> {
+  // 验证密码强度
+  const passwordCheck = validatePasswordStrength(password);
+  if (!passwordCheck.valid) {
+    return { id: 0, error: passwordCheck.message };
+  }
+  
   const now = new Date().toISOString();
   const rows = await d1Query<{ maxId: number }>('SELECT MAX(id) as maxId FROM users');
   const maxId = rows[0]?.maxId ?? 0;
@@ -408,12 +441,19 @@ export async function createUser(username: string, password: string, email?: str
     'INSERT INTO users (id, username, email, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [maxId + 1, username, email ?? null, hashedPassword, 'user', now, now]
   );
-  return maxId + 1;
+  return { id: maxId + 1 };
 }
-export async function changePassword(userId: number, newPassword: string): Promise<void> {
+export async function changePassword(userId: number, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  // 验证密码强度
+  const passwordCheck = validatePasswordStrength(newPassword);
+  if (!passwordCheck.valid) {
+    return { success: false, error: passwordCheck.message };
+  }
+  
   const now = new Date().toISOString();
   const hashedPassword = await hashPassword(newPassword);
   await d1Exec('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', [hashedPassword, now, userId]);
+  return { success: true };
 }
 export async function updateLastLogin(userId: number): Promise<void> {
   const now = new Date().toISOString();
@@ -453,8 +493,8 @@ export async function updateUser(userId: number, updates: { email?: string; role
 }
 
 // 管理员重置用户密码
-export async function resetUserPassword(userId: number, newPassword: string): Promise<void> {
-  await changePassword(userId, newPassword);
+export async function resetUserPassword(userId: number, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  return changePassword(userId, newPassword);
 }
 
 // ─── Session ───────────────────────────────────────────────────────────────────
