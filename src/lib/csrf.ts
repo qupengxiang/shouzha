@@ -1,15 +1,16 @@
 // CSRF保护工具
 
-import crypto from 'crypto';
-
 // 生成CSRF令牌
 export function generateCsrfToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+  // 使用Web Crypto API生成随机令牌
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // 验证CSRF令牌
 export function validateCsrfToken(token: string): boolean {
-  return token.length === 64 && /^[a-f0-9]+$/.test(token);
+  return typeof token === 'string' && token.length === 64 && /^[a-f0-9]+$/.test(token);
 }
 
 // 为请求设置CSRF令牌
@@ -50,5 +51,5 @@ export function verifyCsrfToken(request: Request): boolean {
   }
   
   // 验证令牌
-  return headerToken && cookieToken && headerToken === cookieToken && validateCsrfToken(headerToken);
+  return Boolean(headerToken && cookieToken && headerToken === cookieToken && validateCsrfToken(headerToken));
 }
