@@ -104,6 +104,9 @@ export default function Dashboard() {
           <Link href="/admin/editor" className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">+ 新建文章</Link>
           <Link href="/admin/categories" className="px-3 py-1.5 text-sm border border-border rounded-lg hover:border-amber-600 hover:text-amber-600 transition-colors">📁 分类</Link>
           <Link href="/admin/mini-programs" className="px-3 py-1.5 text-sm border border-border rounded-lg hover:border-amber-600 hover:text-amber-600 transition-colors">🛠️ 造物</Link>
+          {user?.role === 'admin' && (
+            <Link href="/admin/users" className="px-3 py-1.5 text-sm border border-border rounded-lg hover:border-amber-600 hover:text-amber-600 transition-colors">👥 账号</Link>
+          )}
           <button onClick={() => setShowPasswordModal(true)} className="px-3 py-1.5 text-sm border border-border rounded-lg hover:border-amber-600 hover:text-amber-600 transition-colors">修改密码</button>
           <button onClick={handleLogout} className="px-3 py-1.5 text-sm text-red-400 border border-border rounded-lg hover:border-red-400 hover:text-red-500 transition-colors">退出</button>
         </div>

@@ -1,30 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getAllArticles, getArticleById, createArticle, updateArticle, deleteArticle, getSession } from '@/lib/db';
+import { getAllArticles, getArticleById, createArticle, updateArticle, deleteArticle, getSession, getUserById } from '@/lib/db';
 
-// Helper to check auth
-async function getUserId(req: NextRequest): Promise<number | null> {
+// Helper to check auth and get user info
+async function getUserInfo(req: NextRequest): Promise<{ userId: number; role: string } | null> {
   const sessionId = req.cookies.get('session_id')?.value;
   if (!sessionId) return null;
   const session = await getSession(sessionId);
-  return session?.userId || null;
+  if (!session) return null;
+  const user = await getUserById(session.userId);
+  if (!user) return null;
+  return { userId: user.id, role: user.role };
 }
 
-// GET /api/admin/articles - list all articles (auth required)
+// GET /api/admin/articles - list articles (admin sees all, others see their own)
 export async function GET(req: NextRequest) {
-  const userId = await getUserId(req);
-  if (!userId) {
+  const userInfo = await getUserInfo(req);
+  if (!userInfo) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
   
-  const articles = await getAllArticles();
+  const articles = await getAllArticles(userInfo.userId, userInfo.role);
   return NextResponse.json({ articles });
 }
 
 // POST /api/admin/articles - create article (auth required)
 export async function POST(req: NextRequest) {
-  const userId = await getUserId(req);
-  if (!userId) {
+  const userInfo = await getUserInfo(req);
+  if (!userInfo) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
   
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
     excerpt: body.excerpt || '',
     content: body.content || '',
     published: body.published || false,
-    authorId: userId,
+    authorId: userInfo.userId,  // 自动设置作者为当前用户
     viewCount: 0,
     likeCount: 0,
     commentCount: 0,
@@ -74,8 +77,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE /api/admin/articles?ids=id1,id2 - delete articles (auth required)
 export async function DELETE(req: NextRequest) {
-  const userId = await getUserId(req);
-  if (!userId) return NextResponse.json({ error: '未登录' }, { status: 401 });
+  const userInfo = await getUserInfo(req);
+  if (!userInfo) return NextResponse.json({ error: '未登录' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const ids = searchParams.get('ids');

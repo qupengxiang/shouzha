@@ -191,6 +191,40 @@ export async function deleteUser(userId: number): Promise<void> {
   await d1Exec('DELETE FROM users WHERE id = ?', [userId]);
 }
 
+// 获取所有用户（管理员用）
+export async function getAllUsers(): Promise<User[]> {
+  const rows = await d1Query<Record<string, unknown>>('SELECT * FROM users ORDER BY created_at DESC');
+  return rows.map(rowToUser);
+}
+
+// 更新用户信息（角色、邮箱、头像等）
+export async function updateUser(userId: number, updates: { email?: string; role?: string; avatar?: string; bio?: string }): Promise<void> {
+  const now = new Date().toISOString();
+  const fields: string[] = [];
+  const vals: unknown[] = [];
+  let pi = 1;
+  
+  Object.entries(updates).forEach(([k, v]) => {
+    if (v !== undefined) {
+      fields.push(`${k} = $${pi++}`);
+      vals.push(v);
+    }
+  });
+  
+  if (fields.length === 0) return;
+  
+  fields.push(`updated_at = $${pi++}`);
+  vals.push(now);
+  vals.push(userId);
+  
+  await d1Exec(`UPDATE users SET ${fields.join(', ')} WHERE id = $${pi}`, vals);
+}
+
+// 管理员重置用户密码
+export async function resetUserPassword(userId: number, newPassword: string): Promise<void> {
+  await changePassword(userId, newPassword);
+}
+
 // ─── Session ───────────────────────────────────────────────────────────────────
 export function generateSessionId(): string { return crypto.randomUUID(); }
 export async function createSession(userId: number): Promise<string> {
@@ -216,10 +250,22 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 // ─── 文章 ─────────────────────────────────────────────────────────────────────
-export async function getAllArticles(): Promise<Article[]> {
-  const rows = await d1Query('SELECT * FROM articles ORDER BY created_at DESC');
+// 获取所有文章（管理员看全部，普通用户只看自己的）
+export async function getAllArticles(userId?: number, role?: string): Promise<Article[]> {
+  let sql = 'SELECT * FROM articles';
+  const params: unknown[] = [];
+  
+  // 非管理员只能看到自己的文章
+  if (userId && role !== 'admin') {
+    sql += ' WHERE author_id = ?';
+    params.push(userId);
+  }
+  
+  sql += ' ORDER BY created_at DESC';
+  const rows = await d1Query(sql, params);
   return rows.map(r => rowToArticle(r as Record<string, unknown>));
 }
+
 export async function getPublishedArticles(): Promise<Article[]> {
   const rows = await d1Query('SELECT * FROM articles WHERE published = 1 ORDER BY created_at DESC');
   return rows.map(r => rowToArticle(r as Record<string, unknown>));
