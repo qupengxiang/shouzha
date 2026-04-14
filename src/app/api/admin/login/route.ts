@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   console.log('Environment:', process.env.NODE_ENV);
   
   const user = await getUserByUsername(username.trim());
-  console.log('Retrieved user:', user);
+  console.log('Retrieved user:', user ? { ...user, passwordHash: '***' } : null);
   
   if (!user) {
     // 故意延时，防止通过响应时间判断用户是否存在
@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
   }
 
   // 验证密码
-  console.log('Stored password hash:', user.passwordHash);
   console.log('Password hash length:', user.passwordHash.length);
   
   const valid = await verifyPassword(password, user.passwordHash);
