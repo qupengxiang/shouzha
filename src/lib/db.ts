@@ -295,14 +295,14 @@ function rowToUser(r: Record<string, unknown>): User {
   return {
     id:           r.id as number,
     username:     r.username as string,
-    email:        r.email as string | undefined,
-    passwordHash: r.password_hash as string,
+    email:        (r.email || r.Email) as string | undefined,
+    passwordHash: (r.password_hash || r.passwordHash || r.passwordhash) as string,
     role:         r.role as string,
-    avatar:       r.avatar as string | undefined,
-    bio:          r.bio as string | undefined,
-    createdAt:    r.created_at as string,
-    updatedAt:    r.updated_at as string,
-    lastLoginAt:  r.last_login_at as string | undefined,
+    avatar:       (r.avatar || r.Avatar) as string | undefined,
+    bio:          (r.bio || r.Bio) as string | undefined,
+    createdAt:    (r.created_at || r.createdAt || r.createdat) as string,
+    updatedAt:    (r.updated_at || r.updatedAt || r.updatedat) as string,
+    lastLoginAt:  (r.last_login_at || r.lastLoginAt || r.lastloginat) as string | undefined,
   };
 }
 
